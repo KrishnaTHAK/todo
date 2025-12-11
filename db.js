@@ -1,13 +1,11 @@
 const { Pool } = require('pg')
 
 const pool = new Pool({
-    user: 'postgres',
+    user: 'project',
     password: 'krish',
     host: 'localhost',
     port:5432,
-    db: 'krish_db'
+    database: 'todo_app'
 });
 
-module.exports = {
-    query: (text, params) => pool.query(text,params),
-};
+module.exports = pool;

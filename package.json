@@ -10,7 +10,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "express": "^5.2.1a",
+    "jsonwebtoken": "^9.0.3",
     "node": "^20.19.6",
     "pg": "^8.16.3"
   }

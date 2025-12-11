@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f0f2f5;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2 style="text-align: center;">Welcome</h2>
+        <div id="error-msg" class="error"></div>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-btn">Login / Register</button>
+    </div>
+
+    <script>
+        // --- 1. Fix Key Name Consistency (expiryTime) ---
+        const storedToken = localStorage.getItem('token');
+        const storedExpiry = localStorage.getItem('expiryTime'); // Fixed key name
+
+        if (storedToken && storedExpiry && Date.now() < parseInt(storedExpiry)) {
+            window.location.href = '/index.html';
+        } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('expiryTime');
+        }
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            // Clear previous Error
+            errorMsg.innerText = '';
+
+            if (!username || !password) {
+                alert('Username/Password not provided!');
+                return;
+            }
+
+            try {
+                // --- 2. Fix Header and JSON capitalization ---
+                let response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }, // Fixed Hyphen
+                    body: JSON.stringify({ username, password })      // Fixed Capital J
+                });
+
+                // --- 3. Check Login Success FIRST ---
+                if (response.ok) {
+                    const data = await response.json();
+                    loginSuccess(data.token);
+                    return; // Stop here, we are done!
+                }
+
+                // --- 4. Only ask to Register if Login FAILED ---
+                const register = confirm('Login failed (User not found or Wrong password). Register instead?');
+
+                if (register) {
+                    response = await fetch('/signup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        loginSuccess(data.token);
+                    } else {
+                        // Signup failed (e.g. user already exists)
+                        errorMsg.innerText = data.detail || "Registration failed";
+                    }
+                }
+
+            } catch (err) {
+                console.error(err);
+                // Fix innerText property assignment
+                errorMsg.innerText = 'Network error or server offline!';
+            }
+        });
+
+        // Helper function to save token and redirect
+        function loginSuccess(token) {
+            localStorage.setItem('token', token);
+            const oneHour = 60 * 60 * 1000;
+            const expiryTime = Date.now() + oneHour;
+            localStorage.setItem('expiryTime', expiryTime);
+            window.location.href = '/index.html'; // Go to homepage
+        }
+    </script>
+</body>
+
+</html>

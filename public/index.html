@@ -4,98 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Simple Todo App</title>
-    <style>
-        /* 1. Basic CSS for Layout and Looks */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .todo-container {
-            background: white;
-            width: 400px;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-
-        /* Input Section */
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            outline: none;
-        }
-
-        button#add-btn {
-            padding: 10px 20px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button#add-btn:hover {
-            background-color: #218838;
-        }
-
-        /* List Section */
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        li {
-            background: #fff;
-            border-bottom: 1px solid #eee;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        li:last-child {
-            border-bottom: none;
-        }
-
-        .delete-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .delete-btn:hover {
-            background-color: #c82333;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
+    <title>G.O.A.T Todo App</title>
 </head>
 
 <body>
-
+    
     <main class="todo-container">
         <header>
             <h1>Todo List</h1>
@@ -103,61 +17,106 @@
 
         <section class="input-group">
             <input type="text" id="todo-input" placeholder="What needs to be done?">
-            <button id="add-btn">Add</button>
+            <button id="add-btn">Add ➕</button>
         </section>
 
         <ul id="todo-list">
             <li>
-                <span>Buy groceries</span>
-                <button class="delete-btn">Delete</button>
+                <span>Tasks</span>
+                <button class="delete-btn">❌</button>
             </li>
         </ul>
     </main>
 
+    
     <script>
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('expiryTime');
+            window.location.href='/login.html';
+        }
+            
+        const token = localStorage.getItem('token');
+        const expiryTime = localStorage.getItem('expiryTime');
+        
+        function checkAuth() {
+            if(!token || !expiryTime){
+                logout();
+                return;
+            }
+            const currentTime = Date.now();
+            const timeLeft = expiryTime - currentTime;
+            if(timeLeft <= 0){
+                alert('Session expired! Please login again.');
+                logout();
+            } else {
+                console.log(`Session is valid!\n Auto-logout in ${Math.floor(timeLeft/1000)} seconds.`);
+                setTimeout(()=>{
+                    alert('Your session has expired!');
+                    logout()
+                }, timeLeft);
+            }
+        }
+        
+        checkAuth();
+
+        if (!token) {
+            window.location.href = './login.html';
+        }
+
         const input = document.getElementById('todo-input');
         const addBtn = document.getElementById('add-btn');
         const list = document.getElementById('todo-list');
 
-        // 1. LOAD: Fetch todos from database when page loads
+        
         window.onload = async () => {
-            const response = await fetch('/todos');
-            const todos = await response.json();
+            const response = await fetch('/todos', {
+                headers: { 'token': token } // <--- CHANGE #1: Send Token
+            });
 
-            // Loop through the list and display each one
+            // If token is fake or expired, logout
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const todos = await response.json();
             todos.forEach(todo => {
                 addTodoToDOM(todo.id, todo.task);
             });
         };
 
-        // 2. ADD: Send new todo to database
+        
         addBtn.addEventListener('click', async () => {
             const taskText = input.value;
             if (taskText === '') return alert("Please enter a task!");
 
-            // Generate a simple random ID (since we aren't using auto-increment yet)
-            const newId = Math.floor(Math.random() * 100000);
-
-            // Send to Backend
-            await fetch('/todos', {
+            const response = await fetch('/todos', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'token': token 
+                },
                 body: JSON.stringify({
-                    id: newId,
                     task: taskText,
                     task_completed: false
                 })
             });
 
-            // Update Frontend
-            addTodoToDOM(newId, taskText);
+            
+            const savedTodoID = response.json();
+
+            
+            addTodoToDOM(savedTodoID.id, taskText);
             input.value = '';
         });
 
-        // Helper function to create HTML elements
+
+        
         function addTodoToDOM(id, task) {
             const li = document.createElement('li');
-            // We add a specific ID to the <li> so we can find it later to remove
             li.id = `todo-${id}`;
             li.innerHTML = `
                 <span>${task}</span>
@@ -165,17 +124,16 @@
             `;
             list.appendChild(li);
         }
-
-        // 3. DELETE: Tell backend to remove item
+        
         async function deleteTodo(id) {
-            // Send DELETE command to Backend
             await fetch(`/todos/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { 'token': token } // <--- CHANGE #3: Send Token
             });
 
-            // Remove from screen
             document.getElementById(`todo-${id}`).remove();
         }
+    
     </script>   
 
 </body>
