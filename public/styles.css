@@ -63,6 +63,7 @@ li {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-top-left-radius: 5px;
 }
 
 li:last-child {
@@ -169,3 +170,39 @@ li:last-child {
 
 .cancel { background-color: #ccc; }
 .save { background-color: #28a745; color: white; }
+
+/* logout button in the right - corner */
+
+.container {
+    position: relative; /* ⚠️ Important: This keeps the button inside the box */
+}
+
+.logout-btn {
+    position: absolute;
+    top: 0px;
+    right: 2px;
+
+    background-color: #ff4757; 
+    color: white;
+    border: none;
+    padding: 5px 9px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.logout-btn:hover {
+    background-color: #ff6b81; 
+}
+
+#todo-list {
+    max-height: 324px;
+    overflow-y: auto; 
+}
+
+li span{
+    word-break: break-word;
+    max-width: 75%;
+    display: inline-block;
+}

@@ -11,24 +11,17 @@
 <body>
     
     <main class="todo-container">
-        <header>
+        <div class="container">
+            <button class="logout-btn" onclick="logout()">Logout >></button>
             <h1>Todo List</h1>
-        </header>
+        </div>
 
         <section class="input-group">
             <input type="text" id="todo-input" placeholder="What needs to be done?">
-            <button id="add-btn">Add ➕</button>
+            <button id="add-btn" onclick="addTodo()">Add ➕</button>
         </section>
 
-        <ul id="todo-list">
-            <!-- <li>
-                <span>Tasks</span>
-                <div class="action-btn-container">
-                    <button class="edit-btn">✒️</button>
-                    <button class="delete-btn">❌</button>
-                </div>
-            </li> -->
-        </ul>
+        <ul id="todo-list"></ul>
     </main>
 
     <div id="edit-modal" class="modal hidden">
@@ -102,32 +95,41 @@
             });
         };
         
-        
         addBtn.addEventListener('click', async () => {
-            const taskText = input.value;
-            if (taskText === '') return alert("Please enter a task!");
+            const input = document.getElementById("todo-input");
+            const taskText = input.value.trim();
+            if (!taskText) {
+                alert('Task cannot be empty!\nPlease enter a task!');
+                return;
+            }
 
-            const response = await fetch('/todos', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'token': token 
-                },
-                body: JSON.stringify({
-                    task: taskText,
-                    task_completed: false
-                })
-            });
+            const addBtn = document.getElementById("add-btn");
+
+            addBtn.disabled = true;
+            addBtn.innerText = "Adding..."
 
             
-            const savedTodoID = response.json();
-
-            
-            addTodoToDOM(savedTodoID.id, taskText);
-            input.value = '';
+            try{
+                const response = await fetch('/todos', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'token': token 
+                    },
+                    body: JSON.stringify({
+                        task: taskText,
+                        task_completed: false
+                    })
+                });
+    
+                const savedTodoID = response.json();
+                addTodoToDOM(savedTodoID.id, taskText);
+                input.value = '';
+            } finally {
+                addBtn.disabled = false;
+                addBtn.innerText = "Add ➕";
+            }
         });
-
-
         
         function addTodoToDOM(id, task) {
             const li = document.createElement('li');
@@ -142,7 +144,7 @@
             `;
             list.appendChild(li);
         }
-
+        
         async function completedTodo(id){
             const response = await fetch(`/todos/${id}`,{
                 method : 'PUT',
@@ -161,74 +163,75 @@
         };
         
         //  Global Variables for Edit Logic 
-            let currentEditId = null;
-            const editModal = document.getElementById('edit-modal');
-            const editInput = document.getElementById('edit-input');
-            const saveBtn = document.getElementById('save-edit-btn');
-            const cancelBtn = document.getElementById('cancel-edit-btn');
+        let currentEditId = null;
+        const editModal = document.getElementById('edit-modal');
+        const editInput = document.getElementById('edit-input');
+        const saveBtn = document.getElementById('save-edit-btn');
+        const cancelBtn = document.getElementById('cancel-edit-btn');
 
-            // 1. The Function triggered by the ✒️ Button 
-            function editTodo(id) {
-                currentEditId = id; // Remember which ID we are editing
+        function editTodo(id) {
+            currentEditId = id; // Remember which ID we are editing
 
-                // Get the current text from the list
-                const li = document.getElementById(`todo-${id}`);
-                const currentText = li.querySelector('span').innerText;
+            // Get the current text from the list
+            const li = document.getElementById(`todo-${id}`);
+            const currentText = li.querySelector('span').innerText;
 
-                // Fill the input and show the modal
-                editInput.value = currentText;
-                editModal.classList.remove('hidden');
-            }
+            // Fill the input and show the modal
+            editInput.value = currentText;
+            editModal.classList.remove('hidden');
+        }
 
-            //  2. The Cancel Button Logic
-            cancelBtn.addEventListener('click', () => {
-                editModal.classList.add('hidden'); // Just hide the window
-                currentEditId = null;
-            });
+        cancelBtn.addEventListener('click', () => {
+            editModal.classList.add('hidden'); // Just hide the window
+            currentEditId = null;
+        });
 
-            // 3. The Submit Button Logic
-            saveBtn.addEventListener('click', async () => {
-                const newTask = editInput.value;
+        saveBtn.addEventListener('click', async () => {
+            const newTask = editInput.value;
 
-                if (!newTask) return alert("Task cannot be empty!");
+            if (!newTask) return alert("Task cannot be empty!");
 
-                try {
-                    // Send PUT request to Backend
-                    const response = await fetch(`/todos/${currentEditId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'token': token
-                        },
-                        body: JSON.stringify({ task: newTask })
-                    });
+            try {
+                // Send PUT request to Backend
+                const response = await fetch(`/todos/${currentEditId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'token': token
+                    },
+                    body: JSON.stringify({ task: newTask })
+                });
 
-                    if (response.ok) {
-                        // Update the UI immediately
-                        const li = document.getElementById(`todo-${currentEditId}`);
-                        li.querySelector('span').innerText = newTask;
+                if (response.ok) {
+                    // Update the UI immediately
+                    const li = document.getElementById(`todo-${currentEditId}`);
+                    li.querySelector('span').innerText = newTask;
 
-                        // Close the modal
-                        editModal.classList.add('hidden');
-                        currentEditId = null;
-                    } else {
-                        alert("Failed to update task!");
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert("Something went wrong.");
+                    // Close the modal
+                    editModal.classList.add('hidden');
+                    currentEditId = null;
+                } else {
+                    alert("Failed to update task!");
                 }
-            });
-
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong.");
+            }
+        });
+        
         async function deleteTodo(id) {
             await fetch(`/todos/${id}`, {
                 method: 'DELETE',
                 headers: { 'token': token } // <--- CHANGE #3: Send Token
             });
-
             document.getElementById(`todo-${id}`).remove();
         }
-    
+
+        let inputField = document.getElementById("todo-input");
+        inputField.addEventListener("keypress", function(event){
+            if(event.key == "Enter")    document.getElementById("add-btn").click();
+        })
+
     </script>   
 
 
